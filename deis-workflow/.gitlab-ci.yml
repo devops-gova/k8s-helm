@@ -1,0 +1,34 @@
+variables:
+  KUBE_CONTEXT: gova-devops/latest-k8s-eks-john/sample-helm
+
+stages:
+  - pre-build
+  - build
+  - deploy
+  - destroy
+# This Stage will create a package from Helm Chart that can push on package registry.
+Extract-Data:
+  stage: pre-build
+  image: python
+  script:
+    - echo PACKAGE_VERSION=$(python3 $CI_PROJECT_DIR/package-name.py) >> build.env
+    - echo PACKAGE_NAME=$(python3 $CI_PROJECT_DIR/chart-name.py) >> build.env
+
+  artifacts:
+    reports:
+      dotenv: build.env 
+
+# This Stage will create a package from Helm Chart that can push on package registry.
+Publish-Helm-Package:
+  stage: build
+  image: 
+    name: alpine/helm:latest
+    entrypoint: ['']
+  script:
+    - echo "Build Started"
+    - echo ${CI_PROJECT_ID}
+    - echo $PACKAGE_NAME
+    - echo $PACKAGE_VERSION
+    - helm package $CI_PROJECT_DIR/$PACKAGE_NAME
+    - 'curl --request POST --user gitlab-ci-token:$CI_REGISTRY_PASSWORD --form "chart=@${PACKAGE_VERSION}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/helm/api/stable/charts"'
+    - echo "Chart Package Published to Gitlab package registry"
